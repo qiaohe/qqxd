@@ -179,7 +179,7 @@ module.exports = {
         var attach = config.wechat.paymentAttach;
         var mch_id = config.wechat.merchant_id;
         var nonce_str = Math.random().toString(36).substr(2, 15);
-        var total_fee = req.body.amount;
+        var total_fee = +req.body.amount;
         var notify_url = config.wechat.notify_url;
         var cookies = cookieParser(req);
         var openid = cookies['openid'];
@@ -225,7 +225,7 @@ module.exports = {
                     res.send({
                         ret: 0,
                         data: {
-                            prepay_id: tmp1[0],
+                            prepay_id: 'prepay_id=' + tmp1[0],
                             _paySignjs: _paySignjs,
                             appid: appid,
                             timeStamp: timeStamp,
@@ -284,7 +284,7 @@ module.exports = {
                         return rewardHunterDAO.insertMerchantTransactionflow({}).then(function(result){
                             res.send({ret:0, message:'提现成功'})
                         })
-                    })
+                    });
                     console.log(body);
                 }
             })
