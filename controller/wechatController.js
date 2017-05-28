@@ -24,7 +24,7 @@ function authorizedBy(req, res, next) {
                 res.setHeader('Set-Cookie', ['openid=' + o.openid + ';path="/"', 'token=' + o.access_token + ';path="/"']);
                 return rewardHunterDAO.findByOpenId(o.openid).then(function (users) {
                     if (users.length > 0) {
-                        res.header('Location', 'http://mp.ceylonstone.com.cn/playGame.html');
+                        res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo]);
                         return res.send(302);
 
                     } else {
@@ -34,7 +34,7 @@ function authorizedBy(req, res, next) {
                             delete player.privilege;
                             player.createDate = new Date();
                             return rewardHunterDAO.insertPlayer(player).then(function (result) {
-                                res.header('Location', 'http://mp.ceylonstone.com.cn/playGame.html');
+                                res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo]);
                                 return res.send(302);
                             });
                         });

@@ -47,7 +47,16 @@ module.exports = {
     updateMerchantBalance: function (b) {
         return db.query(sqlMapping.rewardHunter.updateMerchantBalance, [b.amount, b.amount, b.openid]);
     },
-    findCommissions: function (openid) {
-        return db.query(sqlMapping.rewardHunter.findCommissions, openid);
+    findCommissions: function (merchantId) {
+        return db.query(sqlMapping.rewardHunter.findCommissions, merchantId);
+    },
+    findRewardById: function (id) {
+        return db.query(sqlMapping.rewardHunter.findRewardById, id);
+    },
+    findByUniqueCode: function (uniqueCode) {
+        return db.query(sqlMapping.rewardHunter.findByUniqueCode, uniqueCode);
+    },
+    insertPlatformTransactionFlow: function(flow){
+        return db.query(sqlMapping.rewardHunter.insertPlatformTransactionFlow, flow);
     }
 }

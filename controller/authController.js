@@ -87,7 +87,7 @@ module.exports = {
                     }));
                 } else if (body.EventKey && body.EventKey.length > 0 && body.Event[0] == 'VIEW') {
                     rewardHunterDAO.findMerchantByOpenId(body.FromUserName[0]).then(function (result) {
-                        if (result && result.length > 0 && result.name) {
+                        if (result && result.length > 0 && result[0].name) {
                             res.send(wechat.createTextMessage({
                                 from: body.FromUserName[0],
                                 to: body.ToUserName[0],

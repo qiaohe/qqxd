@@ -7,7 +7,6 @@ var qiniu = require('../common/qiniu');
 var cookieParser = require('../common/cookieParser');
 var rewardHunterDAO = require('../dao/rewardHunterDAO');
 var xmljs = require('xml2js');
-var parser = new xmljs.Parser();
 var fs = require('fs')
     , path = require('path')
     , certFile = path.resolve(__dirname, '../cert/apiclient_cert.pem')
@@ -20,11 +19,7 @@ function getClientIp(req) {
         req.socket.remoteAddress ||
         req.connection.socket.remoteAddress;
 }
-function getXMLNodeValue(node_name, xml) {
-    var tmp = xml.split("<" + node_name + ">");
-    var _tmp = tmp[1].split("</" + node_name + ">");
-    return _tmp[0];
-}
+
 function raw1(args) {
     var keys = Object.keys(args);
     keys = keys.sort()
@@ -218,48 +213,48 @@ module.exports = {
             request({url: url, method: 'POST', body: formData}, function (err, response, body) {
                 if (!err && response.statusCode == 200) {
                     console.log(body);
-                    var prepay_id = getXMLNodeValue('prepay_id', body.toString("utf-8"));
-                    var tmp = prepay_id.split('[');
-                    var tmp1 = tmp[2].split(']');
-                    var _paySignjs = paySignJS(appid, nonce_str, 'prepay_id=' + tmp1[0], 'MD5', timeStamp);
-                    res.send({
-                        ret: 0,
-                        data: {
-                            prepay_id: 'prepay_id=' + tmp1[0],
-                            _paySignjs: _paySignjs,
-                            appid: appid,
-                            timeStamp: timeStamp,
-                            nonce_str: nonce_str
-                        }
+                    xmljs.parseString(body.toString("utf-8"), {explicitArray: false}, function (err, result) {
+                        var prepay_id = result.xml.prepay_id;
+                        var paySignJS = paySignJS(appid, nonce_str, 'prepay_id=' + result.xml.prepay_id, 'MD5', timeStamp);
+                        res.send({
+                            ret: 0,
+                            data: {
+                                prepay_id: 'prepay_id=' + result.xml.prepay_id,
+                                paySignJS: paySignJS,
+                                appid: appid,
+                                timeStamp: timeStamp,
+                                nonce_str: nonce_str
+                            }
+                        });
                     });
+
                 }
             });
         });
         return next();
     },
-    withdraw: function (req, res, next) {
+    withdraw: function (req, res, callback) {
         var appid = config.wechat.appid;
         var mch_id = config.wechat.merchant_id;
         var nonce_str = Math.random().toString(36).substr(2, 15);
         var amount = req.body.amount;
-        // var cookies = cookieParser(req);
         var openid = req.body.openid;
         var clientIP = getClientIp(req);
         var timeStamp = parseInt(new Date().getTime() / 1000) + '';
         var url = "https://api.mch.weixin.qq.com/mmpaymkttransfers/promotion/transfers";
         redis.incrAsync('pay:t:order:incr').then(function (reply) {
-            var orderNo = 'T' + moment().format('YYYYMMDD') + req.body.merchantNo + _.padLeft(+reply, 4, '0');
+            var orderNo = req.body.orderPrefix + moment().format('YYYYMMDD') + req.body.sequence + _.padLeft(+reply, 4, '0');
             var formData = "<xml>";
             formData += "<mch_appid>" + appid + "</mch_appid>";
             formData += "<mchid>" + mch_id + "</mchid>";
             formData += "<nonce_str>" + nonce_str + "</nonce_str>";
             formData += "<openid>" + openid + "</openid>";
-            formData += "<re_user_name>何桥</re_user_name>";
+            formData += "<re_user_name>" + req.body.realName + "</re_user_name>";
             formData += "<partner_trade_no>" + orderNo + "</partner_trade_no>";
             formData += "<spbill_create_ip>" + clientIP + "</spbill_create_ip>";
             formData += "<amount>" + amount + "</amount>";
-            formData += "<check_name>FORCE_CHECK</check_name>";
-            formData += "<desc>奇趣小店商家收入</desc>";
+            formData += "<check_name>NO_CHECK</check_name>";
+            formData += "<desc>" + req.body.desc + "</desc>";
             formData += "<sign>" + paySignJSAPI({
                     mch_appid: appid,
                     mchid: mch_id,
@@ -268,9 +263,9 @@ module.exports = {
                     partner_trade_no: orderNo,
                     spbill_create_ip: clientIP,
                     amount: amount,
-                    check_name: 'FORCE_CHECK',
-                    re_user_name: '何桥',
-                    desc: '活动奖金'
+                    check_name: 'NO_CHECK',
+                    re_user_name: req.body.realName,
+                    desc: req.body.desc
                 }) + "</sign>";
             formData += "</xml>";
             request({
@@ -279,16 +274,12 @@ module.exports = {
                 key: fs.readFileSync(keyFile),
                 ca: fs.readFileSync(caFile)
             }, function (err, response, body) {
-                if (!err && response.statusCode == 200) {
-                    rewardHunterDAO.findMerchantByOpenId(openid).then(function(merchants){
-                        return rewardHunterDAO.insertMerchantTransactionflow({}).then(function(result){
-                            res.send({ret:0, message:'提现成功'})
-                        })
-                    });
-                    console.log(body);
-                }
+                xmljs.parseString(body.toString("utf-8"), {explicitArray: false}, function (err, result) {
+                    var r = result.xml;
+                    if (r && r.err_code_des) return callback(new Error(r.err_code_des), response, body);
+                    callback(err, response, body);
+                });
             })
         });
-        return next();
     }
 }

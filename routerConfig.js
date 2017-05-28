@@ -60,11 +60,6 @@ module.exports = [
         handler: rewardHunterController.getPlayerInfo
     },
     {
-        method: "get",
-        path: "/api/player",
-        handler: rewardHunterController.getPlayerInfo
-    },
-    {
         method: "put",
         path: "/api/player/gameLevel",
         handler: rewardHunterController.changeGameLevel
@@ -85,11 +80,18 @@ module.exports = [
         handler: rewardHunterController.getMerchant
     },
 
+
     {
         method: "get",
         path: "/api/rewards",
         handler: rewardHunterController.getRewards
     },
+    {
+        method: "post",
+        path: "/api/rewards/:id/exchange",
+        handler: rewardHunterController.exchangeReward
+    },
+
     {
         method: "post",
         path: "/api/payment/callback",
