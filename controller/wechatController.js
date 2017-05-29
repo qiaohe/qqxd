@@ -24,9 +24,8 @@ function authorizedBy(req, res, next) {
                 res.setHeader('Set-Cookie', ['openid=' + o.openid + ';path="/"', 'token=' + o.access_token + ';path="/"']);
                 return rewardHunterDAO.findByOpenId(o.openid).then(function (users) {
                     if (users.length > 0) {
-                        res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo]);
+                        res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?openid=' + o.openid + '&merchant=' + req.query.merchant + '&t=' + new Date().getTime());
                         return res.send(302);
-
                     } else {
                         request(wechat.getUserInfoUrl(o.access_token, o.openid), function (err, response, body) {
                             if (err) return res.send(403, i18n.get('access.not.authorized'));
@@ -34,7 +33,7 @@ function authorizedBy(req, res, next) {
                             delete player.privilege;
                             player.createDate = new Date();
                             return rewardHunterDAO.insertPlayer(player).then(function (result) {
-                                res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo]);
+                                res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?openid=' + o.openid + '&merchant=' + req.query.merchant + '&t=' + new Date().getTime());
                                 return res.send(302);
                             });
                         });

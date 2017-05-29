@@ -169,70 +169,60 @@ module.exports = {
             });
         });
     },
-    jsAPIPay: function (req, res, next) {
+    jsAPIPay: function (req, res, callback) {
         var appid = config.wechat.appid;
         var attach = config.wechat.paymentAttach;
         var mch_id = config.wechat.merchant_id;
         var nonce_str = Math.random().toString(36).substr(2, 15);
-        var total_fee = +req.body.amount;
         var notify_url = config.wechat.notify_url;
-        var cookies = cookieParser(req);
-        var openid = cookies['openid'];
         var body = config.wechat.paymentBody;
         var clientIP = getClientIp(req);
         var timeStamp = parseInt(new Date().getTime() / 1000) + '';
-        var url = "https://api.mch.weixin.qq.com/pay/unifiedorder";
-        redis.incrAsync('pay:order:incr').then(function (reply) {
-            var orderNo = moment().format('YYYYMMDD') + req.body.merchantNo + _.padLeft(+reply, 4, '0');
-            var formData = "<xml>";
-            formData += "<appid>" + appid + "</appid>";
-            formData += "<attach>" + attach + "</attach>";
-            formData += "<body>" + body + "</body>";
-            formData += "<mch_id>" + mch_id + "</mch_id>";
-            formData += "<nonce_str>" + nonce_str + "</nonce_str>";
-            formData += "<notify_url>" + notify_url + "</notify_url>";
-            formData += "<openid>" + openid + "</openid>";
-            formData += "<out_trade_no>" + orderNo + "</out_trade_no>";
-            formData += "<spbill_create_ip>" + clientIP + "</spbill_create_ip>";
-            formData += "<total_fee>" + total_fee + "</total_fee>";
-            formData += "<trade_type>JSAPI</trade_type>";
-            formData += "<sign>" + paySignJSAPI({
+        var formData = "<xml>";
+        formData += "<appid>" + appid + "</appid>";
+        formData += "<attach>" + attach + "</attach>";
+        formData += "<body>" + body + "</body>";
+        formData += "<mch_id>" + mch_id + "</mch_id>";
+        formData += "<nonce_str>" + nonce_str + "</nonce_str>";
+        formData += "<notify_url>" + notify_url + "</notify_url>";
+        formData += "<openid>" + req.body.openid + "</openid>";
+        formData += "<out_trade_no>" + req.body.orderNo + "</out_trade_no>";
+        formData += "<spbill_create_ip>" + clientIP + "</spbill_create_ip>";
+        formData += "<total_fee>" + req.body.amount + "</total_fee>";
+        formData += "<trade_type>JSAPI</trade_type>";
+        formData += "<sign>" + paySignJSAPI({
+                appid: appid,
+                attach: attach,
+                body: body,
+                mch_id: mch_id,
+                nonce_str: nonce_str,
+                notify_url: notify_url,
+                openid: req.body.openid,
+                out_trade_no: req.body.orderNo,
+                spbill_create_ip: clientIP,
+                total_fee: req.body.amount,
+                trade_type: 'JSAPI'
+            }) + "</sign>";
+        formData += "</xml>";
+        request({
+            url: config.wechat.paymentCreateOrder,
+            method: 'POST',
+            body: formData
+        }, function (err, response, body) {
+            xmljs.parseString(body.toString("utf-8"), {explicitArray: false}, function (err, result) {
+                if (result.xml && result.xml.err_code_des) return callback(new Error(result.xml.err_code_des), null);
+                var paySign = paySignJS(appid, nonce_str, 'prepay_id=' + result.xml.prepay_id, 'MD5', timeStamp);
+                callback(err, {
+                    prepay_id: 'prepay_id=' + result.xml.prepay_id,
+                    paySignJS: paySign,
                     appid: appid,
-                    attach: attach,
-                    body: body,
-                    mch_id: mch_id,
-                    nonce_str: nonce_str,
-                    notify_url: notify_url,
-                    openid: openid,
-                    out_trade_no: orderNo,
-                    spbill_create_ip: clientIP,
-                    total_fee: total_fee,
-                    trade_type: 'JSAPI'
-                }) + "</sign>";
-            formData += "</xml>";
-            request({url: url, method: 'POST', body: formData}, function (err, response, body) {
-                if (!err && response.statusCode == 200) {
-                    console.log(body);
-                    xmljs.parseString(body.toString("utf-8"), {explicitArray: false}, function (err, result) {
-                        var prepay_id = result.xml.prepay_id;
-                        var paySignJS = paySignJS(appid, nonce_str, 'prepay_id=' + result.xml.prepay_id, 'MD5', timeStamp);
-                        res.send({
-                            ret: 0,
-                            data: {
-                                prepay_id: 'prepay_id=' + result.xml.prepay_id,
-                                paySignJS: paySignJS,
-                                appid: appid,
-                                timeStamp: timeStamp,
-                                nonce_str: nonce_str
-                            }
-                        });
-                    });
-
-                }
+                    timeStamp: timeStamp,
+                    nonce_str: nonce_str
+                });
             });
         });
-        return next();
     },
+
     withdraw: function (req, res, callback) {
         var appid = config.wechat.appid;
         var mch_id = config.wechat.merchant_id;

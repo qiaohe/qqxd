@@ -27,7 +27,7 @@ module.exports = {
         return db.query(sqlMapping.rewardHunter.insertPlayerTransactionFlow, flow);
     },
     updatePlayerCoin: function (p) {
-        return db.query(sqlMapping.rewardHunter.updatePlayerCoin, [p.diff, p.diff, p.id]);
+        return db.query(sqlMapping.rewardHunter.updatePlayerCoin, [p.coinBalance, p.availableCoin, p.id]);
     },
     findRewards: function (page) {
         return db.query(sqlMapping.rewardHunter.findRewards, [+page.from, +page.size]);
@@ -45,7 +45,7 @@ module.exports = {
         return db.query(sqlMapping.rewardHunter.insertMerchantTransactionFlow, flow);
     },
     updateMerchantBalance: function (b) {
-        return db.query(sqlMapping.rewardHunter.updateMerchantBalance, [b.amount, b.amount, b.openid]);
+        return db.query(sqlMapping.rewardHunter.updateMerchantBalance, [b.withdrawAmount, b.balance, b.openid]);
     },
     findCommissions: function (merchantId) {
         return db.query(sqlMapping.rewardHunter.findCommissions, merchantId);
@@ -56,7 +56,22 @@ module.exports = {
     findByUniqueCode: function (uniqueCode) {
         return db.query(sqlMapping.rewardHunter.findByUniqueCode, uniqueCode);
     },
-    insertPlatformTransactionFlow: function(flow){
+    insertPlatformTransactionFlow: function (flow) {
         return db.query(sqlMapping.rewardHunter.insertPlatformTransactionFlow, flow);
+    },
+    findProductBy: function (productId) {
+        return db.query(sqlMapping.rewardHunter.findProductBy, productId);
+    },
+    insertOrder: function (order) {
+        return db.query(sqlMapping.rewardHunter.insertOrder, order);
+    },
+    findPrepaidOrderBy: function (orderNo) {
+        return db.query(sqlMapping.rewardHunter.findPrepaidOrderBy, orderNo);
+    },
+    updatePlatformBalance: function (balance) {
+        return db.query(sqlMapping.rewardHunter.updatePlatformBalance, [+balance, +balance]);
+    },
+    updateOrderStatus: function (o) {
+        return db.query(sqlMapping.rewardHunter.updateOrderStatus, [o, o.id]);
     }
 }

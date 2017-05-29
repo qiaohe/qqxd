@@ -79,8 +79,6 @@ module.exports = [
         path: "/api/merchants",
         handler: rewardHunterController.getMerchant
     },
-
-
     {
         method: "get",
         path: "/api/rewards",
