@@ -57,17 +57,20 @@ module.exports = [
     {
         method: "get",
         path: "/api/player",
-        handler: rewardHunterController.getPlayerInfo
+        handler: rewardHunterController.getPlayerInfo,
+        secured: 'user'
     },
     {
         method: "put",
         path: "/api/player/gameLevel",
-        handler: rewardHunterController.changeGameLevel
+        handler: rewardHunterController.changeGameLevel,
+        secured: 'user'
     },
     {
         method: "post",
         path: "/api/player/games",
-        handler: rewardHunterController.playGames
+        handler: rewardHunterController.playGames,
+        secured: 'user'
     },
     {
         method: "post",

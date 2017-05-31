@@ -20,17 +20,23 @@ function authorizedIfNeeded(req) {
 function auth() {
     function ensureAuthorized(req, res, next) {
         if (!authorizedIfNeeded(req)) return next();
-        var token = req.headers['token'];
-        if (!token) {
-            return res.send(403, i18n.get("access.not.authorized"));
+        var cookies = cookieParser(req);
+        if (!(cookies['openid'] && cookies['merchant'])) {
+            res.header('Location', 'http://mp.ceylonstone.com.cn/api/wechat/login?redirectUrlNo=0');
+            return res.send(302);
         }
-        redisClient.getAsync(token).then(function (reply) {
-            if (!reply) return res.send(403, i18n.get("token.invalid"));
-            req.user = JSON.parse(reply);
-            return next();
-        }).catch(function (err) {
-            res.send(500, err);
-        });
+        return next();
+        // var token = req.headers['token'];
+        // if (!token) {
+        //     return res.send(403, i18n.get("access.not.authorized"));
+        // }
+        // redisClient.getAsync(token).then(function (reply) {
+        //     if (!reply) return res.send(403, i18n.get("token.invalid"));
+        //     req.user = JSON.parse(reply);
+        //     return next();
+        // }).catch(function (err) {
+        //     res.send(500, err);
+        // });
     }
 
     return (ensureAuthorized);

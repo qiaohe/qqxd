@@ -21,10 +21,12 @@ function authorizedBy(req, res, next) {
             if (err) throw err;
             var o = JSON.parse(body);
             if (o.openid) {
-                res.setHeader('Set-Cookie', ['openid=' + o.openid + ';path="/"', 'token=' + o.access_token + ';path="/"']);
+                res.setHeader('Set-Cookie', ['openid=' + o.openid + ';path="/"','merchant=' + req.query.merchant + ';path="/"', 'token=' + o.access_token + ';path="/"']);
                 return rewardHunterDAO.findByOpenId(o.openid).then(function (users) {
                     if (users.length > 0) {
-                        res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?openid=' + o.openid + '&merchant=' + req.query.merchant + '&t=' + new Date().getTime());
+                        // res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?openid=' + o.openid + '&merchant=' + req.query.merchant + '&t=' + new Date().getTime());
+                        res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo]+ '?merchant=' + req.query.merchant);
+                        redis.set('r:' + o.openid + ':b', users[0].coinBalance - users[0].availableCoin);
                         return res.send(302);
                     } else {
                         request(wechat.getUserInfoUrl(o.access_token, o.openid), function (err, response, body) {
@@ -33,7 +35,9 @@ function authorizedBy(req, res, next) {
                             delete player.privilege;
                             player.createDate = new Date();
                             return rewardHunterDAO.insertPlayer(player).then(function (result) {
-                                res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?openid=' + o.openid + '&merchant=' + req.query.merchant + '&t=' + new Date().getTime());
+                                // res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?openid=' + o.openid + '&merchant=' + req.query.merchant + '&t=' + new Date().getTime());
+                                res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo]+ '?merchant=' + req.query.merchant);
+                                redis.set('r:' + o.openid + ':b', 30);
                                 return res.send(302);
                             });
                         });
