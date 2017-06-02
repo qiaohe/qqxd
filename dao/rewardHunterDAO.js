@@ -29,6 +29,9 @@ module.exports = {
     updatePlayerCoin: function (p) {
         return db.query(sqlMapping.rewardHunter.updatePlayerCoin, [p.coinBalance, p.availableCoin, p.id]);
     },
+    updatePlayer: function (p) {
+        return db.query(sqlMapping.rewardHunter.updatePlayer, [p, p.id]);
+    },
     findRewards: function (page) {
         return db.query(sqlMapping.rewardHunter.findRewards, [+page.from, +page.size]);
     },
@@ -73,5 +76,8 @@ module.exports = {
     },
     updateOrderStatus: function (o) {
         return db.query(sqlMapping.rewardHunter.updateOrderStatus, [o, o.id]);
+    },
+    findPlayerStatus: function (openid) {
+        return db.query(sqlMapping.rewardHunter.findPlayerStatus, openid);
     }
 }

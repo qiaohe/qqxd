@@ -28,6 +28,9 @@ router.route(server);
 server.on("uncaughtException", function (req, res, route, err) {
     res.send({ret: 1, message: err.message});
 });
+
+server.get(/^\/$|\.(.+)$/, restify.serveStatic(config.staticDirectory));
+
 server.listen(config.server.port, config.server.host, function () {
     console.log('%s listening at %s', server.name, server.url);
 });

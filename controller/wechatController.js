@@ -37,7 +37,7 @@ function authorizedBy(req, res, next) {
                             return rewardHunterDAO.insertPlayer(player).then(function (result) {
                                 // res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?openid=' + o.openid + '&merchant=' + req.query.merchant + '&t=' + new Date().getTime());
                                 res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo]+ '?merchant=' + req.query.merchant);
-                                redis.set('r:' + o.openid + ':b', 30);
+                                // redis.set('r:' + o.openid + ':b', 30);
                                 return res.send(302);
                             });
                         });

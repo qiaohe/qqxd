@@ -7,7 +7,11 @@ module.exports = {
         host: '0.0.0.0',
         port: 3000
     },
-
+    staticDirectory: {
+        directory: '/opt/fabulousShop',
+        default: 'index.html',
+        maxAge: 1
+    },
     multipleStatements: true, db: {
         host: '116.62.208.62',
         port: '3306',
@@ -74,6 +78,6 @@ module.exports = {
     complexRate: [0.70, 0.75, 0.80, 0.85, 0.90, 0.95],
     multipleSequence: [0.8, 2, 0.5, 5, 0.1, 10, 0.3, 1.2],
     currentComplexRate: 0.85,
-    redirectUrlMapping: ['http://mp.ceylonstone.com.cn/qqxd', 'http://mp.ceylonstone.com.cn/exchangePrize.html', 'http://mp.ceylonstone.com.cn/gameBing.html', 'http://mp.ceylonstone.com.cn/withdrawCash.html']
+    redirectUrlMapping: ['http://mp.ceylonstone.com.cn/qqxd/index.html', 'http://mp.ceylonstone.com.cn/exchangePrize.html', 'http://mp.ceylonstone.com.cn/gameBing.html', 'http://mp.ceylonstone.com.cn/withdrawCash.html']
 };
 

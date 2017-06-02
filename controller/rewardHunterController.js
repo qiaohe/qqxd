@@ -7,6 +7,7 @@ var rewardHunterDAO = require('../dao/rewardHunterDAO');
 var cookieParser = require('../common/cookieParser');
 var xmljs = require('xml2js');
 var moment = require('moment');
+var request = require('request-promise');
 
 module.exports = {
     getProducts: function (req, res, next) {
@@ -41,7 +42,7 @@ module.exports = {
         var merchant = req.body;
         var cookies = cookieParser(req);
         merchant.openid = cookies['openid'];
-        merchant.creaetDate = new Date();
+        merchant.createDate = new Date();
         rewardHunterDAO.findByUniqueCode(merchant.uniqueCode).then(function (merchants) {
             if (merchants && merchants.length > 0) throw new Error('唯一码已被占用。');
             return rewardHunterDAO.updateMerchant(merchant);
@@ -69,7 +70,7 @@ module.exports = {
         var openid = cookies['openid'] || req.query.openid;
         var multiple = +req.body.multiple;
         console.log('传入倍率：' + multiple);
-        var seed = _.random(0, 1);
+        var seed = _.random(0.15, 0.99);
         var usedCoin = 0;
         var rewardCoin = 0;
         var level = {};
@@ -258,7 +259,7 @@ module.exports = {
         var p = {};
         rewardHunterDAO.findProductBy(productId).then(function (products) {
             p = products[0];
-            req.body.amount = p.cash * 100;
+            req.body.amount = p.cash * 100 + _.random(-10, 10);
             redis.incrAsync('pay:order:incr').then(function (reply) {
                 req.body.orderNo = moment().format('YYYYMMDD') + req.body.merchant + _.padLeft(+reply, 4, '0');
                 wechat.jsAPIPay(req, res, function (err, result) {
@@ -436,6 +437,29 @@ module.exports = {
                 });
             }
 
+        }).catch(function (err) {
+            res.send({ret: 1, message: err.message});
+        });
+        return next();
+    },
+    addCoin: function (req, res, next) {
+        var cookies = cookieParser(req);
+        var openid = cookies['openid'];
+        var player = {};
+        rewardHunterDAO.findByOpenId(openid).then(function (players) {
+            player = players[0];
+            if (players.hasCoupon) return res.send({ret: 0, message: '已优惠30金币'});
+            redis.setAsync('r:' + openid + ':b', '30').then(function (reply) {
+                rewardHunterDAO.updatePlayerCoin({
+                    id: player.id,
+                    coinBalance: -30,
+                    availableCoin: 0
+                }).then(function (result) {
+                    rewardHunterDAO.updatePlayer({id: player.id, hasCoupon: 1}).then(function (result) {
+                        return res.send({ret: 0, message: '已优惠30金币'});
+                    })
+                });
+            })
         }).catch(function (err) {
             res.send({ret: 1, message: err.message});
         });

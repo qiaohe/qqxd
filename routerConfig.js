@@ -112,5 +112,10 @@ module.exports = [
         method: "get",
         path: "/api/merchantProfile",
         handler: rewardHunterController.getMerchantProfile
+    },
+    {
+        method: "post",
+        path: "/api/coupons",
+        handler: rewardHunterController.addCoin
     }
 ];
