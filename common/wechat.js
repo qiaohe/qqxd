@@ -70,6 +70,9 @@ module.exports = {
             // return next();
         }
     },
+    getRefreshTokenUrl: function (refreshToken) {
+        return config.wechat.getRefreshTokenUrl.replace('REFRESH_TOKEN', refreshToken);
+    },
     getAccessToken: function (callback) {
         redis.getAsync('ak:token').then(function (reply) {
             if (reply) {
@@ -91,7 +94,10 @@ module.exports = {
             callback(err, null);
         })
     },
-
+    getVerifyAccessTokenUrl: function (accessToken, openid) {
+        return config.wechat.getVerifyAccessTokenUrl.replace('ACCESS_TOKEN', accessToken)
+            .replace('OPENID', openid);
+    },
     getAuthorizeUrl: function getAuthorizeUrl(redirectUrl, state) {
         var t = config.wechat.authorizeUrlTemplate;
         return t.replace('REDIRECT_URI', redirectUrl).replace('STATE', state);
@@ -271,5 +277,13 @@ module.exports = {
                 });
             })
         });
+    },
+    lockAccount: function (req, res, next) {
+        var cookies = cookieParser(req);
+        if (cookies['openid'] && cookies['openid'] != 'undefined') {
+            rewardHunterDAO.findPlayerStatus(cookies['openid']).then(function (result) {
+                if (result && result.length > 0 && result[0].status == 1) return res.send({ret: 2, message: '用户已禁用。'})
+            });
+        }
     }
 }

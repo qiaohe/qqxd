@@ -57,20 +57,17 @@ module.exports = [
     {
         method: "get",
         path: "/api/player",
-        handler: rewardHunterController.getPlayerInfo,
-        secured: 'user'
+        handler: rewardHunterController.getPlayerInfo
     },
     {
         method: "put",
         path: "/api/player/gameLevel",
-        handler: rewardHunterController.changeGameLevel,
-        secured: 'user'
+        handler: rewardHunterController.changeGameLevel
     },
     {
         method: "post",
         path: "/api/player/games",
-        handler: rewardHunterController.playGames,
-        secured: 'user'
+        handler: rewardHunterController.playGames
     },
     {
         method: "post",
@@ -117,5 +114,11 @@ module.exports = [
         method: "post",
         path: "/api/coupons",
         handler: rewardHunterController.addCoin
+    },
+    {
+        method: "get",
+        path: "/api/games/gameLog",
+        handler: rewardHunterController.getGameLog
     }
+
 ];

@@ -23,7 +23,7 @@ function authorizedIfNeeded(req) {
 function auth() {
     function ensureAuthorized(req, res, next) {
         // if (!authorizedIfNeeded(req)) return next();
-        var cookies = cookieParser(req);
+        var cookies =  cookieParser(req);
         // var ignoredPaths = ['/api/enquiries', '/favicon.ico', '/api/wechat/signature'];
         // var ignoredPathsPattern = /^\S*(css|png|js|html|ttf|woff|svg|eot|scss)/;
         // var pathname = url.parse(req.url).pathname;
@@ -41,7 +41,9 @@ function auth() {
                     if (err) throw err;
                     var o = JSON.parse(body);
                     if (o.openid && req.query.merchant) {
-                        res.setHeader('Set-Cookie', ['openid=' + o.openid + ';path="/"', 'merchant=' + req.query.merchant + ';path="/"', 'token=' + o.access_token + ';path="/"']);
+                        res.setHeader('Set-Cookie', ['openid=' + o.openid+';path="/"', 'token=' + o.access_token +';path="/"']);
+
+                        // res.setHeader('Set-Cookie', ['openid=' + o.openid, 'merchant=' + req.query.merchant, 'token=' + o.access_token + '']);
                         return rewardHunterDAO.findByOpenId(o.openid).then(function (users) {
                             if (users.length > 0) {
                                 redis.set('r:' + o.openid + ':b', users[0].coinBalance - users[0].availableCoin);
@@ -68,9 +70,10 @@ function auth() {
                 })
             }
         } else {
-            rewardHunterDAO.findPlayerStatus(cookies['openid']).then(function (result) {
-                if (result && result.length > 0 && result[0].status == 1) return res.send({ret: 2, message: '用户已禁用。'})
-            });
+            // if (cookies['openid']  && cookies['openid'] != 'undefined')
+            // rewardHunterDAO.findPlayerStatus(cookies['openid']).then(function (result) {
+            //     if (result && result.length > 0 && result[0].status == 1) return res.send({ret: 2, message: '用户已禁用。'})
+            // });
             return next();
         }
         // return next();

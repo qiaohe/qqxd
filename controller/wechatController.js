@@ -20,12 +20,15 @@ function authorizedBy(req, res, next) {
         request(wechat.getAccessTokenUrl(code), function (err, response, body) {
             if (err) throw err;
             var o = JSON.parse(body);
+            redis.set(wechat.openidRefreshTokenKey(o.openid), o.refresh_token, function (err, reply) {
+                if (err) throw err;
+            });
             if (o.openid) {
-                res.setHeader('Set-Cookie', ['openid=' + o.openid + ';path="/"','merchant=' + req.query.merchant + ';path="/"', 'token=' + o.access_token + ';path="/"']);
+                res.setHeader('Set-Cookie', ['openid=' + o.openid + ';path="/"', 'merchant=' + req.query.merchant + ';path="/"', 'token=' + o.access_token + ';path="/"']);
                 return rewardHunterDAO.findByOpenId(o.openid).then(function (users) {
                     if (users.length > 0) {
                         // res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?openid=' + o.openid + '&merchant=' + req.query.merchant + '&t=' + new Date().getTime());
-                        res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo]+ '?merchant=' + req.query.merchant);
+                        res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?merchant=' + req.query.merchant);
                         redis.set('r:' + o.openid + ':b', users[0].coinBalance - users[0].availableCoin);
                         return res.send(302);
                     } else {
@@ -36,7 +39,7 @@ function authorizedBy(req, res, next) {
                             player.createDate = new Date();
                             return rewardHunterDAO.insertPlayer(player).then(function (result) {
                                 // res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?openid=' + o.openid + '&merchant=' + req.query.merchant + '&t=' + new Date().getTime());
-                                res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo]+ '?merchant=' + req.query.merchant);
+                                res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?merchant=' + req.query.merchant);
                                 // redis.set('r:' + o.openid + ':b', 30);
                                 return res.send(302);
                             });
@@ -61,7 +64,8 @@ function authorizedByMerchant(req, res, next) {
             if (err) throw err;
             var o = JSON.parse(body);
             if (o.openid) {
-                res.setHeader('Set-Cookie', ['openid=' + o.openid + ';path="/"', 'token=' + o.access_token + ';path="/"']);
+                res.setHeader('Set-Cookie', ['openid=' + o.openid+ ';path="/"', 'token=' + o.access_token+';path="/"']);
+                // res.setHeader('Set-Cookie', ['openid=' + o.openid + ';path="/"', 'token=' + o.access_token + ';path="/"']);
                 return rewardHunterDAO.findMerchantByOpenId(o.openid).then(function (users) {
                     var redirectUrl = ((req.url.indexOf('merchant') > 0) ? config.wechat.merchantPage : config.wechat.withdrawPage) + '?open=' + o.openid;
                     res.header('Location', redirectUrl);
@@ -78,7 +82,28 @@ function authorizedByMerchant(req, res, next) {
 
 module.exports = {
     callback: function (req, res, next) {
-        authorizedBy(req, res, next);
+        var cookies = cookieParser(req);
+        if (!cookies['openid'] || !cookies['token']) return authorizedBy(req, res, next);
+        request(wechat.getVerifyAccessTokenUrl(cookies['token'], cookies['openid']), function (err, response, body) {
+            if (err) throw err;
+            var o = JSON.parse(body);
+            if (o && o.errcode && o.errcode != 0) return authorizedBy(req, res, next);
+            redis.get('openid:' + cookies['openid'] + ':refresh_token', function (err, refreshToken) {
+                request(wechat.getRefreshTokenUrl(refreshToken), function (err, response, body) {
+                    var o = JSON.parse(body);
+                    if (o && o.errcode && o.errcode != 0) return authorizedBy(req, res, next);
+                    // res.setHeader('Set-Cookie', ['openid=' + o.openid + ';path="/"', 'token=' + o.access_token + ';path="/"']);
+                    res.setHeader('Set-Cookie', ['openid=' + o.openid +';path="/"', 'token=' + o.access_token+';path="/"']);
+                    res.header('Location', config.redirectUrlMapping[+req.query.redirectUrlNo] + '?merchant=' + req.query.merchant);
+                    // redis.set('r:' + o.openid + ':b', users[0].coinBalance - users[0].availableCoin);
+                    return res.send(302);
+                    // return next();
+                });
+            });
+            // return authorizedBy(req, res, next);
+        });
+
+        // authorizedBy(req, res, next);
         return next();
     },
 

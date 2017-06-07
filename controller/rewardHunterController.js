@@ -9,6 +9,32 @@ var xmljs = require('xml2js');
 var moment = require('moment');
 var request = require('request-promise');
 
+function weightRandom(curValue, rate) {
+    var r1 = Math.ceil(400 * rate);
+    var r2 = Math.ceil(240 * rate);
+    var r3 = Math.ceil(150 * rate);
+    var r4 = Math.ceil((r1 + r2 + r3) * (1 - rate) / rate);
+    var randomConfig = [{id: 3, weight: r1}, {id: 5, weight: r2}, {
+        id: 8,
+        weight: r3
+    }, {id: 0, weight: r4}];
+    var randomList = [];
+    for (var i in randomConfig) {
+        for (var j = 0; j < randomConfig[i].weight; j++) {
+            randomList.push(randomConfig[i].id);
+        }
+    }
+    var randomValue = randomList[Math.floor(Math.random() * randomList.length)];
+    console.log(randomValue);
+    return randomValue == curValue;
+    // if (curValue != 0) {
+    //     while (randomValue == curValue) {
+    //         randomValue = randomList[Math.floor(Math.random() * randomList.length)];
+    //     }
+    // }
+    // return randomValue;
+}
+
 module.exports = {
     getProducts: function (req, res, next) {
         rewardHunterDAO.findProducts().then(function (products) {
@@ -20,7 +46,7 @@ module.exports = {
     },
 
     getPlayerInfo: function (req, res, next) {
-        var data = {};
+        var data =  {};
         var cookies = cookieParser(req);
         var openid = cookies['openid'] || req.query.openid;
         rewardHunterDAO.findPlayer(openid).then(function (players) {
@@ -30,7 +56,10 @@ module.exports = {
         }).then(function (levels) {
             data.gameLevel = levels;
             redis.setAsync('p:' + openid + ':l', '1').then(function (reply) {
-                res.send({ret: 0, data: data});
+                rewardHunterDAO.findSettings('marquee').then(function (item) {
+                    data.marquee = item[0].value;
+                    res.send({ret: 0, data: data});
+                })
             })
         }).catch(function (err) {
             res.send({ret: 1, data: err.message});
@@ -69,83 +98,92 @@ module.exports = {
         var cookies = cookieParser(req);
         var openid = cookies['openid'] || req.query.openid;
         var multiple = +req.body.multiple;
-        console.log('传入倍率：' + multiple);
-        var seed = _.random(0.15, 0.99);
+        var seed = _.random(2000, 5000);
         var usedCoin = 0;
         var rewardCoin = 0;
         var level = {};
         var player = {};
+        var merchantId = {};
         var merchant = {};
-        var win = (multiple <= 1) || ((multiple > 1) && ((1 - config.currentComplexRate) / multiple >= seed));
-        redis.getAsync('p:' + openid + ':l').then(function (reply) {
-            level = (reply && reply != null) ? +reply : 1;
-            console.log('游戏等级：' + level);
-            return rewardHunterDAO.findGameLevelById(level)
-        }).then(function (levels) {
-            if (Boolean(win)) {
-                rewardCoin = multiple * levels[0].coin;
-                console.log('游戏分数：' + rewardCoin);
-            }
-            else {
-                var index = _.indexOf(config.multipleSequence, multiple);
-                index = (index == config.multipleSequence.length - 1) ? 0 : index + 1;
-                console.log('实际倍率：' + config.multipleSequence[index]);
-                rewardCoin = config.multipleSequence[index] * levels[0].coin;
-                console.log('游戏分数：' + rewardCoin);
-            }
-            usedCoin = levels[0].coin;
-            console.log('消耗分值：' + levels[0].coin);
-            rewardHunterDAO.findByOpenId(openid).then(function (players) {
-                if (players && players.length < 1) throw new Error('无效的openid，玩家不存在');
-                player = players[0];
-                return rewardHunterDAO.findByUniqueCode(cookies['merchant'] || 'A10001' || req.query.merchant);
-            }).then(function (merchants) {
-                if (merchants && merchants.length < 1) throw new Error('无效的商家,商家不存在。');
-                merchant = merchants[0];
-                return rewardHunterDAO.insertPlayerTransactionFlow({
-                    player: player.id,
-                    playerName: player.nickname,
-                    type: 3,
-                    merchantId: merchant.id,
-                    merchantName: merchant.name,
-                    coin: usedCoin,
-                    createDate: new Date(),
-                    gameLevel: level
-                }).then(function (result) {
+        rewardHunterDAO.findSettings('winningRatio').then(function (item) {
+            var winRate = +item[0].value;
+            var win = (multiple <= 1) || ((multiple > 1) && weightRandom(multiple, winRate));
+            // var win = (multiple <= 1) || ((multiple > 1) && ((1 - config.currentComplexRate) * 100000 / multiple >= seed));
+            redis.getAsync('p:' + openid + ':l').then(function (reply) {
+                level = (reply && reply != null) ? +reply : 1;
+                return rewardHunterDAO.findGameLevelById(level)
+            }).then(function (levels) {
+                if (Boolean(win)) {
+                    rewardCoin = multiple * (level > 1 ? (level - 1) * 2.5 : 1);
+                }
+                else {
+                    var index = _.indexOf(config.multipleSequence, multiple);
+                    index = (index == config.multipleSequence.length - 1) ? 0 : index + 1;
+                    rewardCoin = config.multipleSequence[index] * (level > 1 ? (level - 1) * 2.5 : 1);
+                }
+                usedCoin = levels[0].coin;
+                rewardHunterDAO.findByOpenId(openid).then(function (players) {
+                    if (players && players.length < 1) throw new Error('无效的openid，玩家不存在');
+                    player = players[0];
+                    merchantId = cookies['merchant'] && req.query.merchant || 'A8888';
+                    return rewardHunterDAO.findByUniqueCode(merchantId);
+                }).then(function (merchants) {
+                    if (merchants && merchants.length < 1) throw new Error('无效的商家,商家不存在。');
+                    merchant = merchants[0];
                     return rewardHunterDAO.insertPlayerTransactionFlow({
                         player: player.id,
                         playerName: player.nickname,
-                        type: 2,
+                        type: 3,
                         merchantId: merchant.id,
                         merchantName: merchant.name,
-                        coin: rewardCoin,
+                        coin: usedCoin,
                         createDate: new Date(),
                         gameLevel: level
-                    });
-                }).then(function (result) {
-                    return redis.getAsync('r:' + openid + ':b').then(function (b) {
-                        var usedRechargeCoin = 0;
-                        var rechargeBalance = b ? +b : 0;
-                        if (rechargeBalance >= usedCoin) {
-                            usedRechargeCoin = usedCoin;
-                            redis.decrby('r:' + openid + ':b', usedCoin)
-                        } else {
-                            usedRechargeCoin = rechargeBalance;
-                            redis.set('r:' + openid + ':b', 0);
-                        }
-                        console.log('金币的变动：' + (rewardCoin - usedCoin));
-                        return rewardHunterDAO.updatePlayerCoin({
-                            id: player.id,
-                            coinBalance: usedCoin - rewardCoin,
-                            availableCoin: usedCoin - rewardCoin - usedRechargeCoin
+                    }).then(function (result) {
+                        return rewardHunterDAO.insertPlayerTransactionFlow({
+                            player: player.id,
+                            playerName: player.nickname,
+                            type: 2,
+                            merchantId: merchant.id,
+                            merchantName: merchant.name,
+                            coin: rewardCoin,
+                            createDate: new Date(),
+                            gameLevel: level
                         });
-                    })
+                    }).then(function (result) {
+                        return redis.getAsync('r:' + openid + ':b').then(function (b) {
+                            var usedRechargeCoin = 0;
+                            var rechargeBalance = b ? +b : 0;
+                            if (rechargeBalance >= usedCoin) {
+                                usedRechargeCoin = usedCoin;
+                                redis.decrby('r:' + openid + ':b', usedCoin)
+                            } else {
+                                usedRechargeCoin = rechargeBalance;
+                                redis.set('r:' + openid + ':b', 0);
+                            }
+                            return rewardHunterDAO.updatePlayerCoin({
+                                id: player.id,
+                                coinBalance: usedCoin - rewardCoin,
+                                availableCoin: usedCoin - rewardCoin - usedRechargeCoin
+                            });
+                        })
 
-                }).then(function (result) {
-                    return rewardHunterDAO.findPlayer(openid);
-                }).then(function (players) {
-                    players[0].win = win;
-                    res.send({ret: 0, data: players[0]});
+                    }).then(function (result) {
+                        return rewardHunterDAO.insertGamelog({
+                            multiple: multiple,
+                            openid: openid,
+                            merchant: merchantId,
+                            coin: usedCoin,
+                            rewardCoin: rewardCoin,
+                            createDate: new Date()
+
+                        }).then(function (result) {
+                            return rewardHunterDAO.findPlayer(openid);
+                        });
+                    }).then(function (players) {
+                        players[0].win = win;
+                        res.send({ret: 0, data: players[0]});
+                    })
                 })
             })
         }).catch(function (err) {
@@ -252,6 +290,7 @@ module.exports = {
     },
 
     createOrder: function (req, res, next) {
+        wechat.lockAccount(req, res, next);
         var cookies = cookieParser(req);
         req.body.openid = cookies['openid'];
         req.body.merchant = cookies['merchant'];
@@ -302,6 +341,7 @@ module.exports = {
     },
 
     withdraw: function (req, res, next) {
+        wechat.lockAccount(req, res, next);
         var cookies = cookieParser(req);
         var openid = cookies['openid'];
         var m = {};
@@ -351,7 +391,8 @@ module.exports = {
                 withdrawAmount: m.withdrawAmount,
                 balance: m.balance,
                 uniqueCode: m.uniqueCode,
-                name: m.name
+                name: m.name,
+                status: m.status
             };
             return rewardHunterDAO.findCommissions(m.id)
         }).then(function (commissions) {
@@ -362,6 +403,7 @@ module.exports = {
     },
 
     exchangeReward: function (req, res, next) {
+        wechat.lockAccount(req, res, next);
         var cookies = cookieParser(req);
         var openid = cookies['openid'];
         var player = {};
@@ -444,15 +486,15 @@ module.exports = {
     },
     addCoin: function (req, res, next) {
         var cookies = cookieParser(req);
-        var openid = cookies['openid'];
+        var openid = cookies['openid'] || req.query.openid;
         var player = {};
         rewardHunterDAO.findByOpenId(openid).then(function (players) {
             player = players[0];
-            if (players.hasCoupon) return res.send({ret: 0, message: '已优惠30金币'});
+            if (player.hasCoupon) return res.send({ret: 0, message: '已优惠3金币'});
             redis.setAsync('r:' + openid + ':b', '30').then(function (reply) {
                 rewardHunterDAO.updatePlayerCoin({
                     id: player.id,
-                    coinBalance: -30,
+                    coinBalance: -3,
                     availableCoin: 0
                 }).then(function (result) {
                     rewardHunterDAO.updatePlayer({id: player.id, hasCoupon: 1}).then(function (result) {
@@ -460,6 +502,17 @@ module.exports = {
                     })
                 });
             })
+        }).catch(function (err) {
+            res.send({ret: 1, message: err.message});
+        });
+        return next();
+    },
+    getGameLog: function (req, res, next) {
+        rewardHunterDAO.findGameLog({
+            from: +req.query.from,
+            size: +req.query.size
+        }).then(function (result) {
+            res.send({ret: 0, data: result});
         }).catch(function (err) {
             res.send({ret: 1, message: err.message});
         });

@@ -38,6 +38,7 @@ module.exports = {
         token: 'sunny',
         appid: 'wxb9f33badcb4fbd68',
         merchant_id: '1444211902',
+        getVerifyAccessTokenUrl: "https://api.weixin.qq.com/sns/auth?access_token=ACCESS_TOKEN&openid=OPENID",
         paymentKey: 'QUQIxiaodianYIDINGhuigenghaoWang',
         paymentAttach: '奇趣小店',
         paymentBody: '奇趣小店-茶包',
@@ -76,8 +77,8 @@ module.exports = {
         animalRollSpeed: 100
     },
     complexRate: [0.70, 0.75, 0.80, 0.85, 0.90, 0.95],
-    multipleSequence: [0.8, 2, 0.5, 5, 0.1, 10, 0.3, 1.2],
-    currentComplexRate: 0.85,
+    multipleSequence: [3, 0.2, 5, 0.6, 8, 0.3],
+    currentComplexRate: 0.7,
     redirectUrlMapping: ['http://mp.ceylonstone.com.cn/qqxd/index.html', 'http://mp.ceylonstone.com.cn/exchangePrize.html', 'http://mp.ceylonstone.com.cn/gameBing.html', 'http://mp.ceylonstone.com.cn/withdrawCash.html']
 };
 

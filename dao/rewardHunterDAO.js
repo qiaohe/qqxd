@@ -79,5 +79,15 @@ module.exports = {
     },
     findPlayerStatus: function (openid) {
         return db.query(sqlMapping.rewardHunter.findPlayerStatus, openid);
+    },
+    insertGamelog: function (log) {
+        return db.query(sqlMapping.rewardHunter.insertGamelog, log);
+    },
+    findSettings: function (key) {
+        return db.query(sqlMapping.rewardHunter.findSettings, key);
+    },
+
+    findGameLog: function (page) {
+        return db.query(sqlMapping.rewardHunter.findGameLog, [+page.from, +page.size]);
     }
 }
